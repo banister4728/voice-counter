@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VoiceCounter PWA</title>
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0d12;
+            color: #ffffff;
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .active-card {
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.15), rgba(147, 51, 234, 0.1));
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px -10px rgba(147, 51, 234, 0.3);
+            z-index: 10;
+        }
+        
+        .card-transition {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        input {
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
+        .pulse-active {
+            animation: pulse-ring 2s infinite;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 1rem);
+        }
+        
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        /* Drag UI tweaks */
+        .drag-over {
+            border-top: 2px solid #a855f7 !important;
+            padding-top: 10px !important;
+        }
+    </style>
+</head>
+<body class="flex flex-col antialiased">
+    <!-- Sidebar Backdrop -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] opacity-0 pointer-events-none transition-opacity duration-300" onclick="toggleSidebar()"></div>
+
+    <!-- Hidden Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-[#0b0d12]/95 backdrop-blur-3xl border-r border-white/10 z-[100] transform -translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+        <div class="p-6 pt-12 border-b border-white/10 flex justify-between items-center">
+            <h1 class="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 tracking-tight">
+                VoiceCounter
+            </h1>
+            <button onclick="toggleSidebar()" class="p-2 -mr-2 text-gray-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        
+        <div class="p-4 border-b border-white/10 w-full">
+            <div class="flex bg-white/5 p-1 rounded-xl border border-white/10 shadow-inner w-full" id="mode-toggle-container">
+                <!-- Mode toggle injected here -->
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-2 pb-safe" id="sequence-tabs">
+            <!-- vertical sequence tabs injected here -->
+        </div>
+        
+        <div class="p-4 border-t border-white/10 text-center">
+            <p class="text-[10px] text-gray-600 font-medium tracking-widest uppercase">Select a Routine</p>
+        </div>
+    </aside>
+
+    <header class="sticky top-0 z-50 pt-10 pb-2 px-4 glass shadow-md border-b border-white/10 flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+            <!-- Hamburger Menu -->
+            <button onclick="toggleSidebar()" class="p-2 -ml-2 text-gray-400 hover:text-white transition-colors" title="Menu">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+
+            <!-- Edit controls -->
+            <div class="flex-1 flex items-center justify-end gap-2 min-w-0" id="header-edit-controls">
+                <!-- Populated via renderUI when in EDIT mode -->
+            </div>
+            
+            <!-- Read-only header for PLAY mode -->
+            <div class="flex-1 flex items-center justify-end gap-2 min-w-0" id="header-play-view">
+                <!-- Populated via renderUI when in PLAY mode -->
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="w-full max-w-2xl mx-auto px-4 py-4 space-y-3 pb-40 relative z-0" id="routines-container">
+        <!-- Cards generated by JS -->
+    </main>
+
+    <!-- Bottom Controls -->
+    <footer class="fixed bottom-0 left-0 right-0 glass px-5 py-4 z-30 pb-safe rounded-t-3xl shadow-[0_-15px_40px_rgba(0,0,0,0.6)] flex gap-4 backdrop-blur-xl border-t border-white/10">
+        <button id="btn-stop" onclick="engine.stop()" class="flex-1 bg-red-500/10 text-red-500 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/30 rounded-2xl font-bold text-lg active:scale-95 transition-all flex items-center justify-center min-h-[60px]">
+            STOP
+        </button>
+        <button id="btn-play-pause" onclick="engine.playPause()" class="flex-[2] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-2xl font-bold text-xl shadow-lg shadow-purple-500/25 active:scale-95 transition-all flex items-center justify-center text-white min-h-[60px]">
+            PLAY
+        </button>
+    </footer>
+
+    <!-- Import/Export Modal -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] hidden flex-col items-center justify-center p-4">
+        <div class="glass w-full max-w-md rounded-3xl p-6 relative border border-white/20 shadow-2xl">
+            <button onclick="closeImportExportModal()" class="absolute top-4 right-4 p-2 text-gray-400 hover:text-white transition-colors bg-white/5 rounded-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-xl font-bold text-white mb-2">Import / Export Routine</h2>
+            <p class="text-xs text-gray-400 mb-4 leading-relaxed pr-8">Copy the text below to backup this specific routine, or paste an exported routine sequence array here to overwrite it.</p>
+            <textarea id="io-textarea" class="w-full h-48 bg-black/60 border border-white/20 rounded-xl p-4 text-xs text-blue-300 font-mono focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none mb-4 whitespace-pre"></textarea>
+            <button onclick="importSequence()" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 py-3 rounded-xl font-bold text-white active:scale-95 transition-transform shadow-lg shadow-purple-500/20">
+                Overwrite Routine
+            </button>
+            <p id="import-error" class="text-xs text-red-400 mt-3 text-center hidden font-medium"></p>
+        </div>
+    </div>
+
+    <script>
+        // Speech Initialization & Caching
+        const speechAvailable = 'speechSynthesis' in window;
+        let speechInitialized = false;
+        let cachedVoice = null;
+
+        // Pre-fetch voices asynchronously to avoid blocking the main thread during execution
+        if (speechAvailable && speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => { getPreferredVoice(); };
+        }
+
+        function getPreferredVoice() {
+            if (cachedVoice) return cachedVoice;
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                cachedVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || 
+                              voices.find(v => v.lang.startsWith('en'));
+            }
+            return cachedVoice;
+        }
+
+        function ensureSpeechInitialized() {
+            if (!speechInitialized && speechAvailable) {
+                try {
+                    const u = new SpeechSynthesisUtterance('');
+                    u.volume = 0;
+                    window.speechSynthesis.speak(u);
+                    speechInitialized = true;
+                    getPreferredVoice(); // Cache the voice on first interaction
+                } catch (e) {
+                    console.error("Speech Init Error", e);
+                }
+            }
+        }
+        
+        document.addEventListener('touchstart', ensureSpeechInitialized, { passive: true, once: true });
+        document.addEventListener('click', ensureSpeechInitialized, { passive: true, once: true });
+
+        function speakAndForget(text, onEndCallback = null) {
+            if (!speechAvailable) {
+                if (onEndCallback) setTimeout(onEndCallback, 1000);
+                return;
+            }
+            try {
+                // Cancel ongoing speech to stay perfectly in rhythm, 
+                // but only if it's currently speaking to avoid unnecessary API thrashing.
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                }
+                
+                const u = new SpeechSynthesisUtterance(text.toString());
+                u.rate = 1.15; // slightly faster for rhythmic counting
+                
+                const preferred = getPreferredVoice();
+                if (preferred) u.voice = preferred;
+                
+                if (onEndCallback) {
+                    let called = false;
+                    const safeCallback = () => {
+                        if (called) return;
+                        called = true;
+                        onEndCallback();
+                    };
+                    u.onend = safeCallback;
+                    // Fallback to prevent app freezing if onend fails to fire (common Android bug)
+                    u.onerror = safeCallback;
+                    
+                    const fallbackMs = Math.max(3000, text.toString().length * 150);
+                    setTimeout(safeCallback, fallbackMs);
+                }
+
+                // Critical Fix for Android Chrome: 
+                // Calling speak() immediately after cancel() throws away the new utterance randomly if the TTS queue gets jumbled.
+                // A tiny 20ms push onto the microtask queue guarantees the previous cancel is completely flushed by the OS.
+                setTimeout(() => {
+                    window.speechSynthesis.speak(u);
+                }, 20);
+            } catch (e) {
+                console.error("Speech error", e);
+                if (onEndCallback) setTimeout(onEndCallback, 1000);
+            }
+        }
+
+        class Engine {
+            constructor() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.expectedTick = 0;
+                this.timeoutId = null;
+                this.mode = 'PLAY'; // 'PLAY' or 'EDIT'
+                
+                const defaultSequences = [
+                    {
+                        id: 'seq-' + Date.now(),
+                        name: 'My Mobility Routine',
+                        routines: [
+                            { name: 'Neck Rotations', start: 1, end: 10, interval: 2.0, sets: 1, rest: 0 },
+                            { name: 'Shoulder Rolls', start: 1, end: 15, interval: 1.5, sets: 1, rest: 0 },
+                            { name: 'Hip Openers', start: 1, end: 10, interval: 3.0, sets: 2, rest: 5 }
+                        ]
+                    }
+                ];
+                
+                try {
+                    const oldRoutines = localStorage.getItem('voiceCounterRoutines');
+                    const storedSequences = localStorage.getItem('voiceCounterSequences');
+                    
+                    if (storedSequences) {
+                        this.sequences = JSON.parse(storedSequences);
+                    } else if (oldRoutines) {
+                        const parsedOld = JSON.parse(oldRoutines);
+                        if (Array.isArray(parsedOld)) {
+                            this.sequences = [{
+                                id: 'seq-migrated',
+                                name: 'Default Routine (Migrated)',
+                                routines: parsedOld
+                            }];
+                        } else {
+                            this.sequences = defaultSequences;
+                        }
+                    } else {
+                        this.sequences = defaultSequences;
+                    }
+                } catch(e) {
+                    this.sequences = defaultSequences;
+                }
+                
+                if (!this.sequences || this.sequences.length === 0) {
+                    this.sequences = defaultSequences;
+                }
+                
+                this.activeSequenceIdx = 0;
+                this.currentIdx = -1;
+                this.currentCount = 0;
+                this.subCount = 0;
+                this.currentSet = 1;
+                this.isResting = false;
+                this.restCount = 0;
+                this.wakeLock = null;
+            }
+            
+            get activeRoutines() {
+                return this.sequences[this.activeSequenceIdx]?.routines || [];
+            }
+
+            save() {
+                try {
+                    localStorage.setItem('voiceCounterSequences', JSON.stringify(this.sequences));
+                    localStorage.removeItem('voiceCounterRoutines'); // Clean up old data
+                } catch(e) { console.error("Save error", e); }
+            }
+
+            async requestWakeLock() {
+                if ('wakeLock' in navigator) {
+                    try {
+                        this.wakeLock = await navigator.wakeLock.request('screen');
+                    } catch (err) {
+                        console.error('WakeLock error:', err);
+                    }
+                }
+            }
+            
+            releaseWakeLock() {
+                if (this.wakeLock) {
+                    this.wakeLock.release().then(() => {
+                        this.wakeLock = null;
+                    }).catch(console.error);
+                }
+            }
+
+            setMode(mode) {
+                if (mode === 'EDIT' && this.isRunning) {
+                    alert('Please stop the session before editing.');
+                    return;
+                }
+                this.mode = mode;
+                renderUI();
+            }
+
+            playPause() {
+                ensureSpeechInitialized();
+
+                if (this.isRunning) {
+                    if (this.isPaused) this.resume();
+                    else this.pause();
+                } else {
+                    this.start();
+                }
+            }
+            
+            stop() {
+                this.isRunning = false;
+                this.isPaused = false;
+                clearTimeout(this.timeoutId);
+                if (speechAvailable) window.speechSynthesis.cancel();
+                
+                this.currentIdx = 0;
+                if (this.activeRoutines.length > 0) {
+                    this.currentCount = this.activeRoutines[0].start;
+                    this.displayCount = this.currentCount;
+                } else {
+                    this.currentCount = 0;
+                    this.displayCount = 0;
+                }
+                
+                this.subCount = 0;
+                this.currentSet = 1;
+                this.isResting = false;
+                this.restCount = 0;
+                this.releaseWakeLock();
+                renderUI();
+                updateFooterAndHeader();
+            }
+
+            start() {
+                if (this.activeRoutines.length === 0) return;
+                this.mode = 'PLAY'; // Auto switch to play mode
+                this.isRunning = true;
+                this.isPaused = false;
+                this.requestWakeLock();
+                if (this.currentIdx >= 0 && this.currentIdx < this.activeRoutines.length) {
+                    this.jumpTo(this.currentIdx);
+                } else {
+                    this.jumpTo(0);
+                }
+            }
+            
+            pause() {
+                this.isPaused = true;
+                clearTimeout(this.timeoutId);
+                if (speechAvailable) window.speechSynthesis.cancel();
+                renderUI();
+            }
+            
+            resume() {
+                if (!this.isRunning) return;
+                this.isPaused = false;
+                this.expectedTick = Date.now();
+                this.tick();
+                renderUI();
+            }
+
+            jumpTo(index) {
+                if (this.mode === 'EDIT') {
+                    // Start directly from this routine in Play Mode
+                    this.mode = 'PLAY';
+                    this.isRunning = true;
+                    this.isPaused = false;
+                    this.requestWakeLock();
+                }
+
+                const routines = this.activeRoutines;
+                if (index >= routines.length) {
+                    this.stop();
+                    speakAndForget("Sequence Complete. Great job.");
+                    return;
+                }
+                
+                this.currentSet = 1;
+                this.isResting = false;
+                this.subCount = 0;
+
+                if (!this.isRunning || this.isPaused) {
+                    // Just select the exercise silently without speaking, since we are paused/stopped
+                    this.currentIdx = index;
+                    const routine = routines[index];
+                    this.currentCount = routine.start;
+                    this.displayCount = this.currentCount;
+                    renderUI();
+                    return;
+                }
+
+                this.startSet(index);
+            }
+            
+            getTotalSets(routine) {
+                const setMode = routine.setMode || 'Number';
+                if (setMode === 'L/R' || setMode === 'F/B') return 2;
+                return routine.sets || 1;
+            }
+
+            startSet(index) {
+                this.currentIdx = index;
+                const routine = this.activeRoutines[index];
+                
+                this.currentCount = routine.start;
+                this.displayCount = this.currentCount;
+                this.subCount = 0;
+                this.isResting = false;
+                
+                let msg = routine.name;
+                const setMode = routine.setMode || 'Number';
+                
+                if (setMode === 'L/R') {
+                    if (this.currentSet === 1) msg += ' - Left side';
+                    else if (this.currentSet === 2) msg += ' - Right side';
+                } else if (setMode === 'F/B') {
+                    if (this.currentSet === 1) msg += ' - Forwards';
+                    else if (this.currentSet === 2) msg += ' - Backwards';
+                } else {
+                    const totalSets = this.getTotalSets(routine);
+                    if (totalSets > 1) {
+                        msg += `. Set ${this.currentSet} of ${totalSets}`;
+                    }
+                }
+                
+                clearTimeout(this.timeoutId);
+                renderUI();
+
+                speakAndForget(msg, () => {
+                    // Check if conditions changed while speaking
+                    if (!this.isRunning || this.isPaused || this.currentIdx !== index || this.isResting) return;
+                    this.expectedTick = Date.now() + 500;
+                    this.timeoutId = setTimeout(() => this.tick(), 500);
+                });
+            }
+
+            startRest() {
+                this.isResting = true;
+                const routine = this.activeRoutines[this.currentIdx];
+                this.restCount = routine.rest || 0;
+                
+                if (this.restCount <= 0) {
+                    this.currentSet++;
+                    this.startSet(this.currentIdx);
+                    return;
+                }
+                
+                clearTimeout(this.timeoutId);
+                renderUI();
+
+                // The first tick of rest speaks "Rest X"
+                speakAndForget(`Rest ${this.restCount}`, () => {
+                    // Check if conditions changed while speaking
+                    if (!this.isRunning || this.isPaused || !this.isResting || this.currentIdx !== this.currentIdx) return;
+                    this.expectedTick = Date.now() + 500;
+                    this.timeoutId = setTimeout(() => this.tick(), 500);
+                });
+            }
+            
+            tick() {
+                if (!this.isRunning || this.isPaused) return;
+                
+                const routine = this.activeRoutines[this.currentIdx];
+                
+                if (this.isResting) {
+                    this.restCount--; // Decrement elapsed rest second
+                    
+                    if (this.restCount <= 0) {
+                        this.currentSet++;
+                        this.startSet(this.currentIdx);
+                        return;
+                    }
+                    
+                    speakAndForget(this.restCount);
+                    renderUI();
+                    
+                    this.expectedTick += 1000;
+                    let nextWait = this.expectedTick - Date.now();
+                    if (nextWait <= 0) {
+                        if (nextWait < -1000) {
+                            this.expectedTick = Date.now() + 1000;
+                            nextWait = 1000;
+                        } else {
+                            nextWait = 0;
+                        }
+                    }
+                    this.timeoutId = setTimeout(() => this.tick(), nextWait);
+                    return;
+                }
+                
+                const isCountingDown = routine.start > routine.end;
+                
+                // End condition Check
+                let ended = false;
+                if (isCountingDown) {
+                    if (this.currentCount < routine.end) ended = true;
+                } else {
+                    if (this.currentCount > routine.end) ended = true;
+                }
+                
+                if (ended) {
+                    const totalSets = this.getTotalSets(routine);
+                    if (this.currentSet < totalSets) {
+                        if ((routine.rest || 0) > 0) {
+                            this.startRest();
+                        } else {
+                            this.currentSet++;
+                            this.startSet(this.currentIdx);
+                        }
+                    } else {
+                        this.jumpTo(this.currentIdx + 1);
+                    }
+                    return;
+                }
+                
+                const type = routine.countType || 'Normal';
+                let textToSpeak = this.currentCount;
+                let displayString = this.currentCount;
+                
+                if (type === 'And') {
+                    if (this.subCount === 1) { textToSpeak = 'and'; displayString = `${this.currentCount} &`; }
+                } else if (type === '4s') {
+                    if (this.subCount === 1) textToSpeak = '2';
+                    else if (this.subCount === 2) textToSpeak = '3';
+                    else if (this.subCount === 3) textToSpeak = '4';
+                    displayString = `${this.currentCount}.${this.subCount + 1}`;
+                }
+                
+                this.displayCount = displayString;
+                speakAndForget(textToSpeak);
+                renderUI(); 
+                
+                if (type === 'Normal') {
+                    if (isCountingDown) this.currentCount--; else this.currentCount++;
+                } else if (type === 'And') {
+                    this.subCount++;
+                    if (this.subCount > 1) {
+                        this.subCount = 0;
+                        if (isCountingDown) this.currentCount--; else this.currentCount++;
+                    }
+                } else if (type === '4s') {
+                    this.subCount++;
+                    if (this.subCount > 3) {
+                        this.subCount = 0;
+                        if (isCountingDown) this.currentCount--; else this.currentCount++;
+                    }
+                }
+                
+                const intervalMs = routine.interval * 1000;
+                this.expectedTick += intervalMs;
+                
+                let nextWait = this.expectedTick - Date.now();
+                if (nextWait <= 0) {
+                    // If we are extremely late (e.g. device slept), reset the anchor to now
+                    // Otherwise, just fire as soon as possible to catch up without losing rhythm
+                    if (nextWait < -intervalMs) {
+                        this.expectedTick = Date.now() + intervalMs;
+                        nextWait = intervalMs;
+                    } else {
+                        nextWait = 0;
+                    }
+                }
+                
+                this.timeoutId = setTimeout(() => this.tick(), nextWait);
+            }
+            
+            /* Sequence Management */
+            addSequence() {
+                if (this.isRunning) {
+                    alert("Please stop the session before adding a sequence.");
+                    return;
+                }
+                this.sequences.push({
+                    id: 'seq-' + Date.now(),
+                    name: 'New Sequence',
+                    routines: [ { name: 'New Exercise', start: 1, end: 10, interval: 2.0, sets: 1, rest: 0 } ]
+                });
+                this.activeSequenceIdx = this.sequences.length - 1;
+                this.mode = 'EDIT'; // Jump into edit mode for new sequence
+                this.save();
+                renderUI();
+            }
+            
+            deleteActiveSequence() {
+                if (this.isRunning) {
+                    alert("Please stop the session before deleting.");
+                    return;
+                }
+                if (this.sequences.length <= 1) {
+                    alert("You must have at least one sequence.");
+                    return;
+                }
+                if (confirm("Delete this entire sequence?")) {
+                    this.sequences.splice(this.activeSequenceIdx, 1);
+                    this.activeSequenceIdx = 0;
+                    this.save();
+                    renderUI();
+                }
+            }
+
+            switchSequence(idx) {
+                if (this.isRunning) {
+                    alert("Please stop the current session before switching sequences.");
+                    return;
+                }
+                this.activeSequenceIdx = idx;
+                renderUI();
+            }
+        }
+
+        const engine = new Engine();
+
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && engine.isRunning && !engine.isPaused) {
+                await engine.requestWakeLock();
+            }
+        });
+
+        // Routine Management
+        function updateRoutine(idx, field, val) {
+            if (Number.isNaN(val)) return;
+            engine.activeRoutines[idx][field] = val;
+            engine.save();
+        }
+
+        function updateRoutineSets(idx, val) {
+            const routine = engine.activeRoutines[idx];
+            if (val === 'Custom') {
+                const customVal = prompt("Enter number of sets:", routine.sets || 1);
+                const parsed = parseInt(customVal);
+                if (!isNaN(parsed) && parsed > 0) {
+                    routine.setMode = 'Number';
+                    routine.sets = parsed;
+                }
+            } else if (val === 'L/R' || val === 'F/B') {
+                routine.setMode = val;
+                routine.sets = 2; // Fixed length for consistency
+            } else {
+                routine.setMode = 'Number';
+                routine.sets = parseInt(val);
+            }
+            engine.save();
+            renderUI();
+        }
+
+        function deleteRoutine(idx) {
+            if (engine.isRunning) {
+                alert("Cannot delete while session is running");
+                return;
+            }
+            if (confirm("Remove this exercise?")) {
+                engine.activeRoutines.splice(idx, 1);
+                engine.save();
+                renderUI();
+            }
+        }
+
+        function addRoutine() {
+            engine.activeRoutines.push({ name: 'New Exercise', start: 1, end: 10, interval: 2.0, sets: 1, rest: 0 });
+            engine.save();
+            renderUI();
+            setTimeout(() => {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }, 100);
+        }
+        
+        function insertRoutine(idx) {
+            if (engine.isRunning) return;
+            engine.activeRoutines.splice(idx, 0, { name: 'New Exercise', start: 1, end: 10, interval: 2.0, sets: 1, rest: 0 });
+            engine.save();
+            renderUI();
+        }
+
+        // Mobile-friendly Up/Down Reordering
+        function moveRoutine(idx, direction) {
+            if (engine.isRunning) return;
+            const routines = engine.activeRoutines;
+            const targetIdx = idx + direction;
+            if (targetIdx < 0 || targetIdx >= routines.length) return;
+            
+            const itemToMove = routines[idx];
+            routines.splice(idx, 1);
+            routines.splice(targetIdx, 0, itemToMove);
+            
+            engine.save();
+            renderUI();
+        }
+
+        // Sequence Modals
+        function openImportExportModal() {
+            if (engine.isRunning) {
+                alert("Please stop the session before importing/exporting.");
+                return;
+            }
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('modal-backdrop').classList.add('flex');
+            
+            // Serialize just the active sequence arrays
+            const currentSeq = engine.sequences[engine.activeSequenceIdx];
+            document.getElementById('io-textarea').value = JSON.stringify(currentSeq.routines, null, 2);
+            document.getElementById('import-error').classList.add('hidden');
+        }
+        
+        function closeImportExportModal() {
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            document.getElementById('modal-backdrop').classList.remove('flex');
+        }
+        
+        function importSequence() {
+            const val = document.getElementById('io-textarea').value;
+            const errEl = document.getElementById('import-error');
+            try {
+                const parsed = JSON.parse(val);
+                // Expecting to paste an array of routines
+                if (!Array.isArray(parsed)) {
+                    throw new Error("Invalid format. Must paste a JSON array of routines.");
+                }
+                
+                // Allow replacing the current routine array
+                engine.sequences[engine.activeSequenceIdx].routines = parsed;
+                
+                engine.save();
+                closeImportExportModal();
+                renderUI();
+            } catch (e) {
+                errEl.innerText = "Error: " + e.message;
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        function updateSequenceName(val) {
+            if (!val.trim()) return;
+            engine.sequences[engine.activeSequenceIdx].name = val;
+            engine.save();
+            renderUI();
+        }
+
+        // Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                backdrop.classList.add('opacity-100');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.remove('opacity-100');
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        // UI rendering
+        function renderUI() {
+            const container = document.getElementById('routines-container');
+            const tabsContainer = document.getElementById('sequence-tabs');
+            const toggleContainer = document.getElementById('mode-toggle-container');
+            const activeEl = document.activeElement;
+            const isInputMode = activeEl && (activeEl.tagName === 'INPUT');
+            const isEdit = engine.mode === 'EDIT';
+            
+            const footer = document.querySelector('footer');
+            
+            // Adjust footer visibility and main padding based on Mode
+            if (isEdit) {
+                footer.classList.add('hidden');
+                footer.classList.remove('flex');
+                container.classList.remove('pb-40');
+                container.classList.add('pb-6');
+            } else {
+                footer.classList.remove('hidden');
+                footer.classList.add('flex');
+                container.classList.add('pb-40');
+                container.classList.remove('pb-6');
+            }
+            
+            // Render View Mode Toggle for Sidebar
+            const playActive = !isEdit ? "bg-blue-600/30 text-blue-300 shadow-sm border border-blue-500/50" : "text-gray-400 hover:text-white border border-transparent";
+            const editActive = isEdit ? "bg-purple-600/30 text-purple-300 shadow-sm border border-purple-500/50" : "text-gray-400 hover:text-white border border-transparent";
+            
+            toggleContainer.innerHTML = `
+                <button onclick="engine.setMode('PLAY');" class="flex-1 py-2 px-1 text-xs font-bold rounded-lg transition-all ${playActive} flex items-center justify-center">PLAY MODE</button>
+                <button onclick="engine.setMode('EDIT');" class="flex-1 py-2 px-1 text-xs font-bold rounded-lg transition-all ${editActive} flex items-center justify-center">EDIT MODE</button>
+            `;
+            
+            // Header parts mapping
+            const activeName = engine.sequences[engine.activeSequenceIdx].name;
+            const editControls = document.getElementById('header-edit-controls');
+            const playView = document.getElementById('header-play-view');
+            
+            if (isEdit) {
+                editControls.classList.remove('hidden');
+                editControls.classList.add('flex');
+                playView.classList.add('hidden');
+                playView.classList.remove('flex');
+                
+                if (!isInputMode || activeEl.id !== 'active-seq-name') {
+                    editControls.innerHTML = `
+                        <input type="text" id="active-seq-name" onchange="updateSequenceName(this.value)" value="${activeName}" class="flex-1 min-w-0 text-xl font-bold bg-transparent border-b border-white/20 hover:border-white/50 focus:border-purple-500 focus:bg-white/5 px-1 py-0.5 rounded transition-all text-white shadow-none outline-none truncate mr-2">
+                        <button onclick="openImportExportModal()" class="px-2 py-1 bg-blue-500/20 text-blue-300 text-[10px] uppercase font-bold rounded hover:bg-blue-500/30 transition-colors whitespace-nowrap hidden sm:inline-block">
+                            Export / Import
+                        </button>
+                        <button onclick="openImportExportModal()" class="px-2 py-1 bg-blue-500/20 text-blue-300 text-[10px] uppercase font-bold rounded hover:bg-blue-500/30 transition-colors whitespace-nowrap sm:hidden">
+                            In / Out
+                        </button>
+                        <button onclick="engine.deleteActiveSequence()" class="p-1 px-2 rounded bg-red-500/10 text-red-500/70 hover:text-red-400 hover:bg-red-500/20 transition-colors" title="Delete Sequence">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    `;
+                }
+            } else {
+                editControls.classList.add('hidden');
+                editControls.classList.remove('flex');
+                playView.classList.remove('hidden');
+                playView.classList.add('flex');
+                playView.innerHTML = `
+                    <span class="flex-1 min-w-0 text-xl font-bold bg-transparent px-1 py-0.5 text-gray-300 truncate">${activeName}</span>
+                    <span id="status-text" class="text-xs text-gray-400 font-medium">Ready</span>
+                `;
+            }
+
+            // Vertical Sidebar Tabs
+            let tabsHtml = '';
+            engine.sequences.forEach((seq, idx) => {
+                const isActiveTab = idx === engine.activeSequenceIdx;
+                const tabClass = isActiveTab 
+                    ? "bg-white/10 border-white/20 text-white shadow-sm"
+                    : "bg-transparent border-transparent text-gray-400 hover:bg-white/5 hover:text-white";
+                tabsHtml += `
+                    <button onclick="engine.switchSequence(${idx}); toggleSidebar();" class="w-full text-left px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${tabClass} truncate">
+                        ${seq.name}
+                    </button>
+                `;
+            });
+            tabsHtml += `
+                <button onclick="engine.addSequence(); toggleSidebar();" class="w-full mt-2 border-2 border-dashed border-white/10 text-gray-400 hover:text-white hover:border-white/30 hover:bg-white/5 py-3 rounded-xl transition-all flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> 
+                    <span class="font-bold text-sm">New Routine</span>
+                </button>
+            `;
+            tabsContainer.innerHTML = tabsHtml;
+
+            // Routines
+            if (!isInputMode || activeEl.id === 'active-seq-name') {
+                let html = '';
+                engine.activeRoutines.forEach((r, i) => {
+                    const isActive = engine.isRunning && engine.currentIdx === i;
+                    const isCounting = isActive && !engine.isPaused;
+                    
+                    if (isEdit) {
+                        // Compact Edit Mode with Mobile-Friendly Reorder Buttons
+                        html += `
+                            <div class="glass rounded-xl p-2 flex flex-col gap-2 relative border-white/5 transition-all" id="card-${i}">
+                                <div class="flex items-center gap-1">
+                                    <div class="flex flex-col gap-0 text-gray-400">
+                                        <button onclick="moveRoutine(${i}, -1)" class="${i === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:text-white hover:bg-white/10'} p-1 rounded transition-colors" ${i === 0 ? 'disabled' : ''}>
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        </button>
+                                        <button onclick="moveRoutine(${i}, 1)" class="${i === engine.activeRoutines.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:text-white hover:bg-white/10'} p-1 rounded transition-colors" ${i === engine.activeRoutines.length - 1 ? 'disabled' : ''}>
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </button>
+                                    </div>
+                                    <input type="text" value="${r.name}" onchange="updateRoutine(${i}, 'name', this.value)" class="flex-1 font-bold bg-black/20 focus:bg-white/10 border-b border-transparent focus:border-purple-500 px-2 py-1.5 rounded-lg text-white text-sm outline-none transition-all shadow-none w-full min-w-0">
+                                    <button onclick="insertRoutine(${i+1})" class="text-blue-400 hover:bg-blue-500/20 p-1.5 rounded-full transition-colors ml-1" title="Insert Excercise Below">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                    </button>
+                                    <button onclick="deleteRoutine(${i})" class="text-gray-500 hover:text-red-400 p-1.5 rounded-full hover:bg-white/5 transition-colors" style="min-height:0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                                <div class="flex gap-2 pl-[38px] pr-1 pb-1 flex-wrap">
+                                    <div class="flex gap-2 w-full">
+                                        <div class="flex-[2] flex flex-col items-center bg-black/30 rounded-lg p-1 border border-white/5">
+                                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Start</span>
+                                            <input type="number" value="${r.start}" onchange="updateRoutine(${i}, 'start', parseInt(this.value))" class="w-full bg-transparent text-center text-sm font-semibold outline-none py-0.5 shadow-none" style="min-height:0">
+                                        </div>
+                                        <div class="flex-[2] flex flex-col items-center bg-black/30 rounded-lg p-1 border border-white/5">
+                                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">End</span>
+                                            <input type="number" value="${r.end}" onchange="updateRoutine(${i}, 'end', parseInt(this.value))" class="w-full bg-transparent text-center text-sm font-semibold outline-none py-0.5 shadow-none" style="min-height:0">
+                                        </div>
+                                        <div class="flex-[2] flex flex-col items-center bg-black/30 rounded-lg p-1 border border-white/5">
+                                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Secs</span>
+                                            <input type="number" value="${r.interval}" step="0.1" onchange="updateRoutine(${i}, 'interval', parseFloat(this.value))" class="w-full bg-transparent text-center text-sm font-semibold outline-none py-0.5 shadow-none" style="min-height:0">
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2 w-full mt-0.5">
+                                        <div class="flex-[2] flex flex-col items-center bg-black/20 rounded-lg p-1 border border-white/5">
+                                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Sets</span>
+                                            <select onchange="updateRoutineSets(${i}, this.value)" class="w-full bg-transparent text-center text-[11px] font-semibold outline-none py-0.5 shadow-none mt-[2px] cursor-pointer">
+                                                <option class="bg-gray-900 text-white" value="1" ${(r.setMode==='Number' || !r.setMode) && (r.sets||1)===1 ? 'selected' : ''}>1</option>
+                                                <option class="bg-gray-900 text-white" value="2" ${(r.setMode==='Number' || !r.setMode) && r.sets===2 ? 'selected' : ''}>2</option>
+                                                <option class="bg-gray-900 text-white" value="3" ${(r.setMode==='Number' || !r.setMode) && r.sets===3 ? 'selected' : ''}>3</option>
+                                                <option class="bg-gray-900 text-white" value="4" ${(r.setMode==='Number' || !r.setMode) && r.sets===4 ? 'selected' : ''}>4</option>
+                                                <option class="bg-gray-900 text-white" value="5" ${(r.setMode==='Number' || !r.setMode) && r.sets===5 ? 'selected' : ''}>5</option>
+                                                ${(r.setMode==='Number' || !r.setMode) && (r.sets||1)>5 ? `<option class="bg-gray-900 text-white" value="${r.sets}" selected>${r.sets}</option>` : ''}
+                                                <option class="bg-gray-900 text-white" value="L/R" ${r.setMode==='L/R' ? 'selected' : ''}>L/R</option>
+                                                <option class="bg-gray-900 text-white" value="F/B" ${r.setMode==='F/B' ? 'selected' : ''}>F/B</option>
+                                                <option class="bg-gray-900 text-white" value="Custom">Custom...</option>
+                                            </select>
+                                        </div>
+                                        <div class="flex-[2] flex flex-col items-center bg-black/20 rounded-lg p-1 border border-white/5">
+                                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Rest (s)</span>
+                                            <input type="number" value="${r.rest || 0}" onchange="updateRoutine(${i}, 'rest', parseInt(this.value))" min="0" class="w-full bg-transparent text-center text-sm font-semibold outline-none py-0.5 shadow-none" style="min-height:0">
+                                        </div>
+                                        <div class="flex-[3] flex flex-col items-center bg-black/20 rounded-lg p-1 border border-white/5">
+                                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Type</span>
+                                            <select onchange="updateRoutine(${i}, 'countType', this.value)" class="w-full bg-transparent text-center text-[11px] font-semibold outline-none py-0.5 shadow-none mt-[2px] cursor-pointer">
+                                                <option class="bg-gray-900 text-white" value="Normal" ${(!r.countType || r.countType === 'Normal') ? 'selected' : ''}>Normal</option>
+                                                <option class="bg-gray-900 text-white" value="And" ${r.countType === 'And' ? 'selected' : ''}>"And"</option>
+                                                <option class="bg-gray-900 text-white" value="4s" ${r.countType === '4s' ? 'selected' : ''}>4-Beat</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Play Mode
+                        const isSelected = engine.currentIdx === i;
+                        const cardOuterClass = isSelected ? "active-card glass rounded-2xl p-4 relative card-transition cursor-pointer" : "glass rounded-2xl p-4 relative card-transition opacity-80 cursor-pointer hover:bg-white/5";
+                        
+                        const isCounting = engine.isRunning && !engine.isPaused && isSelected;
+                        let statusText = '';
+                        
+                        const setMode = r.setMode || 'Number';
+                        let setPrefix = '';
+                        if (setMode === 'L/R') {
+                            setPrefix = engine.currentSet === 1 ? 'L ' : 'R ';
+                        } else if (setMode === 'F/B') {
+                            setPrefix = engine.currentSet === 1 ? 'FWD ' : 'BWD ';
+                        } else {
+                            setPrefix = engine.getTotalSets(r) > 1 ? `S${engine.currentSet} ` : '';
+                        }
+                                
+                        if (isSelected) {
+                            if (engine.isResting) {
+                                statusText = `<span class="text-yellow-400 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">R ${engine.restCount}...</span>`;
+                            } else if (isCounting) {
+                                statusText = `<span class="text-blue-400 font-bold text-sm bg-blue-500/10 px-2 py-1 rounded-lg">${setPrefix}${engine.displayCount}...</span>`;
+                            } else if (engine.isPaused) {
+                                statusText = `<span class="text-yellow-500 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">Paused</span>`;
+                            } else {
+                                // Stopped but selected
+                                statusText = `<span class="text-gray-400 font-bold text-sm bg-white/5 px-2 py-1 rounded-lg border border-white/10">${setPrefix}${r.start}</span>`;
+                            }
+                        }
+
+                        html += `
+                            <div class="${cardOuterClass} flex flex-col gap-1" id="card-${i}" onclick="engine.jumpTo(${i})">
+                                <h3 class="text-lg font-bold text-white w-full text-left truncate">${r.name}</h3>
+                                <div class="flex justify-between items-center w-full">
+                                    <p class="text-[11px] text-gray-400 tracking-wide uppercase font-semibold truncate flex-1 pr-2">
+                                        ${r.start} <span class="text-gray-600">➝</span> ${r.end} 
+                                        <span class="mx-1 text-gray-600">•</span> ${r.interval}s 
+                                        ${(r.setMode === 'L/R') ? `<span class="mx-1 text-blue-400/80">•</span> <span class="text-blue-400/80">L/R</span>` : (r.setMode === 'F/B') ? `<span class="mx-1 text-blue-400/80">•</span> <span class="text-blue-400/80">F/B</span>` : (engine.getTotalSets(r) > 1 ? `<span class="mx-1 text-gray-600">•</span> ${engine.getTotalSets(r)} Sets` : '')} 
+                                        ${(r.rest || 0) > 0 ? `<span class="mx-1 text-gray-600">•</span> ${r.rest}s Rest` : ''} 
+                                        ${(r.countType && r.countType !== 'Normal') ? `<span class="mx-1 text-purple-400/80">•</span> <span class="text-purple-400/80">${r.countType}</span>` : ''}
+                                    </p>
+                                    <div class="text-right whitespace-nowrap flex-shrink-0" id="status-${i}">
+                                        ${statusText}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                if (isEdit) {
+                    // Provide a bottom add button just in case user drags to the very bottom
+                    html += `
+                        <button onclick="addRoutine()" class="w-full mt-2 border-2 border-dashed border-white/10 bg-white/5 rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:border-white/30 hover:bg-white/10 active:scale-95 transition-all outline-none" style="min-height: 50px;">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            <span class="font-semibold text-sm">Add Exercise</span>
+                        </button>
+                    `;
+                }
+                
+                container.innerHTML = html;
+                
+                if (engine.isRunning) {
+                    const activeCard = document.getElementById(`card-${engine.currentIdx}`);
+                    if (activeCard) {
+                        activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            } else if (engine.isRunning && !isEdit) {
+                // Background updates for counting text
+                engine.activeRoutines.forEach((r, i) => {
+                    const statusEl = document.getElementById(`status-${i}`);
+                    if (statusEl) {
+                        const isSelected = engine.currentIdx === i;
+                        const isCounting = engine.isRunning && !engine.isPaused && isSelected;
+                        let statusText = '';
+                        
+                        const setMode = r.setMode || 'Number';
+                        let setPrefix = '';
+                        if (setMode === 'L/R') {
+                            setPrefix = engine.currentSet === 1 ? 'L ' : 'R ';
+                        } else if (setMode === 'F/B') {
+                            setPrefix = engine.currentSet === 1 ? 'FWD ' : 'BWD ';
+                        } else {
+                            setPrefix = engine.getTotalSets(r) > 1 ? `S${engine.currentSet} ` : '';
+                        }
+                                
+                        if (isSelected) {
+                            if (engine.isResting) {
+                                statusText = `<span class="text-yellow-400 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">R ${engine.restCount}...</span>`;
+                            } else if (isCounting) {
+                                statusText = `<span class="text-blue-400 font-bold text-sm bg-blue-500/10 px-2 py-1 rounded-lg">${setPrefix}${engine.displayCount}...</span>`;
+                            } else if (engine.isPaused) {
+                                statusText = `<span class="text-yellow-500 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">Paused</span>`;
+                            } else {
+                                statusText = `<span class="text-gray-400 font-bold text-sm bg-white/5 px-2 py-1 rounded-lg border border-white/10">${setPrefix}${r.start}</span>`;
+                            }
+                        }
+                        statusEl.innerHTML = statusText;
+                    }
+                });
+            }
+            
+            updateFooterAndHeader();
+        }
+        
+        // Ensure footer updates state when jumping around routines from UI
+        const originalPlayPause = engine.playPause.bind(engine);
+        engine.playPause = () => {
+            originalPlayPause();
+            updateFooterAndHeader();
+        };
+
+        function updateFooterAndHeader() {
+            const playBtn = document.getElementById('btn-play-pause');
+            const statusText = document.getElementById('status-text'); // Might be null in edit 
+            
+            if (!speechAvailable) {
+                // fallback UI handling if needed
+                if (statusText) statusText.innerText = "Error: Speech Not Found";
+            } else if (engine.isRunning && !engine.isPaused) {
+                playBtn.innerHTML = `
+                    <svg class="w-7 h-7 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    PAUSE
+                `;
+                playBtn.className = "flex-[2] bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 border border-yellow-500/30 rounded-2xl font-bold text-xl active:scale-95 transition-all flex items-center justify-center min-h-[60px]";
+                if (statusText) {
+                    statusText.textContent = "Session Active";
+                    statusText.className = "text-[10px] text-green-400 font-bold px-2 py-0.5 bg-green-400/10 rounded-full border border-green-400/20 pulse-active";
+                }
+            } else if (engine.isRunning && engine.isPaused) {
+                playBtn.innerHTML = `
+                    <svg class="w-7 h-7 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                    RESUME
+                `;
+                playBtn.className = "flex-[2] bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30 rounded-2xl font-bold text-xl active:scale-95 transition-all flex items-center justify-center min-h-[60px]";
+                if (statusText) {
+                    statusText.textContent = "Paused";
+                    statusText.className = "text-xs text-yellow-500 font-medium";
+                }
+            } else {
+                playBtn.innerHTML = `
+                    <svg class="w-7 h-7 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                    PLAY
+                `;
+                playBtn.className = "flex-[2] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-2xl font-bold text-xl shadow-lg shadow-purple-500/25 active:scale-95 transition-all flex items-center justify-center text-white min-h-[60px]";
+                if (statusText) {
+                    statusText.textContent = "Ready";
+                    statusText.className = "text-xs text-gray-400 font-medium";
+                }
+            }
+        }
+
+        // Initialize UI
+        renderUI();
+    </script>
+</body>
+</html>
