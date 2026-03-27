@@ -1,4 +1,4 @@
-const CACHE_NAME = 'voicecounter-v1.0';
+const CACHE_NAME = 'voicecounter-v1.5';
 const ASSETS = [
     './',
     './index.html',

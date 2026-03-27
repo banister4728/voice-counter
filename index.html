@@ -75,6 +75,41 @@
             border-top: 2px solid #a855f7 !important;
             padding-top: 10px !important;
         }
+
+        /* Light Mode Overrides */
+        html.light body {
+            background-color: #f9fafb;
+            color: #1f2937;
+        }
+        html.light .glass {
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: 1px solid rgba(0, 0, 0, 0.05) !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        }
+        html.light #sidebar {
+            background-color: rgba(249, 250, 251, 0.98) !important;
+        }
+        html.light .text-white { color: #1f2937 !important; }
+        html.light .bg-gradient-to-r, html.light .bg-gradient-to-r * { color: #ffffff !important; }
+        html.light .text-gray-400 { color: #6b7280 !important; }
+        html.light .text-gray-500 { color: #4b5563 !important; }
+        html.light .bg-white\/5 { background-color: rgba(0, 0, 0, 0.05) !important; }
+        html.light .bg-white\/10 { background-color: rgba(0, 0, 0, 0.1) !important; }
+        html.light .border-white\/10 { border-color: rgba(0, 0, 0, 0.1) !important; }
+        html.light .border-white\/20 { border-color: rgba(0, 0, 0, 0.2) !important; }
+        html.light .bg-black\/20 { background-color: rgba(255, 255, 255, 0.8) !important; border: 1px solid rgba(0,0,0,0.05) !important; }
+        html.light .bg-black\/30 { background-color: rgba(255, 255, 255, 0.5) !important; border: 1px solid rgba(0,0,0,0.05) !important; }
+        html.light .bg-black\/60 { background-color: rgba(255, 255, 255, 0.95) !important; border: 1px solid rgba(0,0,0,0.1) !important; color: #1f2937 !important; }
+        html.light .hover\:bg-white\/5:hover { background-color: rgba(0, 0, 0, 0.08) !important; }
+        html.light .hover\:bg-white\/10:hover { background-color: rgba(0, 0, 0, 0.12) !important; }
+        html.light .hover\:text-white:hover { color: #111827 !important; }
+        html.light .text-blue-300 { color: #2563eb !important; }
+        html.light .text-purple-300 { color: #9333ea !important; }
+        
+        /* Font Size Overrides */
+        html.font-sm { font-size: 14px; }
+        html.font-md { font-size: 16px; }
+        html.font-lg { font-size: 18px; }
     </style>
 </head>
 <body class="flex flex-col antialiased">
@@ -104,6 +139,10 @@
         
         <div class="p-4 border-t border-white/10 text-center flex flex-col gap-2">
             <p class="text-[10px] text-gray-600 font-medium tracking-widest uppercase">Select a Routine</p>
+            <button onclick="openSettingsModal()" class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl font-bold text-white shadow-sm active:scale-95 transition-all text-sm flex items-center justify-center gap-2 mt-2 border border-white/10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Settings
+            </button>
             <button id="install-pwa-btn" onclick="installPWA()" class="hidden w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 py-3 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-all text-sm flex items-center justify-center gap-2 mt-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                 Install App
@@ -161,25 +200,166 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settings-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] hidden flex-col items-center justify-center p-4" onclick="if(event.target === this) closeSettingsModal()">
+        <div class="glass w-full max-w-md rounded-3xl p-6 relative border border-white/20 shadow-2xl">
+            <button onclick="closeSettingsModal()" class="absolute top-4 right-4 p-2 text-gray-400 hover:text-white transition-colors bg-white/5 rounded-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-xl font-bold text-white mb-6">Settings</h2>
+            
+            <div class="space-y-6">
+                <!-- Theme Toggle -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-white text-sm">Theme Mode</h3>
+                        <p class="text-xs text-gray-400">Toggle light or dark theme</p>
+                    </div>
+                    <button id="theme-toggle-btn" onclick="toggleTheme()" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm font-bold text-white transition-colors border border-white/10 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path id="theme-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                        <span id="theme-toggle-text">Dark</span>
+                    </button>
+                </div>
+
+                <!-- Font Size -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-white text-sm">Font Size</h3>
+                        <p class="text-xs text-gray-400">Scale the application text size</p>
+                    </div>
+                    <div class="flex bg-white/5 rounded-lg border border-white/10 p-1">
+                        <button onclick="setFontSize('sm')" id="font-btn-sm" class="px-3 py-1 text-sm text-gray-400 hover:text-white rounded font-bold transition-all">A</button>
+                        <button onclick="setFontSize('md')" id="font-btn-md" class="px-3 py-1 text-base text-gray-400 hover:text-white rounded font-bold transition-all bg-white/10 text-white shadow-sm">A</button>
+                        <button onclick="setFontSize('lg')" id="font-btn-lg" class="px-3 py-1 text-lg text-gray-400 hover:text-white rounded font-bold transition-all">A</button>
+                    </div>
+                </div>
+
+                <hr class="border-white/10">
+
+                <!-- Speech Voice -->
+                <div class="flex flex-col gap-2">
+                    <div>
+                        <h3 class="font-bold text-white text-sm">Speech Voice</h3>
+                        <p class="text-xs text-gray-400">Select the text-to-speech voice</p>
+                    </div>
+                    <select id="voice-select" onchange="setSpeechVoice(this.value)" class="w-full bg-black/20 focus:bg-white/10 border border-white/10 focus:border-purple-500 px-3 py-2 rounded-xl text-white text-sm outline-none transition-all shadow-none cursor-pointer">
+                        <option value="">Default Voice</option>
+                    </select>
+                </div>
+
+                <!-- Speech Rate -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-white text-sm">Speech Rate</h3>
+                            <p class="text-xs text-gray-400">Adjust the counting speed</p>
+                        </div>
+                        <span id="rate-display" class="text-sm font-bold text-purple-400">1.15x</span>
+                    </div>
+                    <input type="range" id="rate-slider" min="0.5" max="2.0" step="0.05" value="1.15" oninput="setSpeechRate(this.value)" class="w-full accent-purple-500">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Chime Audio Context
+        let audioCtx;
+        function playChime() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const t = audioCtx.currentTime;
+            
+            const playNote = (freq, startTime, duration) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+            
+            playNote(523.25, t, 0.4); // C5
+            playNote(659.25, t + 0.1, 0.6); // E5
+        }
+
         // Speech Initialization & Caching
         const speechAvailable = 'speechSynthesis' in window;
         let speechInitialized = false;
         let cachedVoice = null;
+        let savedVoiceURI = localStorage.getItem('voiceCounterVoiceURI') || null;
+        let speechRate = parseFloat(localStorage.getItem('voiceCounterSpeechRate')) || 1.15;
 
-        // Pre-fetch voices asynchronously to avoid blocking the main thread during execution
+        function populateVoiceList() {
+            if (!speechAvailable) return;
+            const select = document.getElementById('voice-select');
+            if (!select) return;
+            
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) return;
+
+            const enVoices = voices.filter(v => v.lang.startsWith('en'));
+            const listToUse = enVoices.length > 0 ? enVoices : voices;
+
+            select.innerHTML = '<option value="">Default Voice</option>';
+            listToUse.forEach(v => {
+                const option = document.createElement('option');
+                option.textContent = `${v.name} (${v.lang})`;
+                option.value = v.voiceURI;
+                option.className = 'bg-gray-900 text-white';
+                if (v.voiceURI === savedVoiceURI) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+
+            if (!select.value && !savedVoiceURI && listToUse.length > 0) {
+                const def = listToUse.find(v => v.name.includes('Google')) || listToUse[0];
+                select.value = def.voiceURI;
+                savedVoiceURI = def.voiceURI;
+            }
+            
+            cachedVoice = voices.find(v => v.voiceURI === savedVoiceURI) || listToUse[0];
+        }
+
         if (speechAvailable && speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = () => { getPreferredVoice(); };
+            speechSynthesis.onvoiceschanged = () => { populateVoiceList(); };
         }
 
         function getPreferredVoice() {
             if (cachedVoice) return cachedVoice;
             const voices = window.speechSynthesis.getVoices();
             if (voices.length > 0) {
-                cachedVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || 
+                cachedVoice = voices.find(v => v.voiceURI === savedVoiceURI) ||
+                              voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || 
                               voices.find(v => v.lang.startsWith('en'));
             }
             return cachedVoice;
+        }
+
+        function setSpeechVoice(uri) {
+            savedVoiceURI = uri;
+            localStorage.setItem('voiceCounterVoiceURI', uri);
+            const voices = window.speechSynthesis.getVoices();
+            cachedVoice = voices.find(v => v.voiceURI === uri) || voices[0];
+            speakAndForget("Testing Voice");
+        }
+
+        function setSpeechRate(val) {
+            speechRate = parseFloat(val);
+            document.getElementById('rate-display').innerText = speechRate.toFixed(2) + 'x';
+            localStorage.setItem('voiceCounterSpeechRate', speechRate.toString());
         }
 
         function ensureSpeechInitialized() {
@@ -193,6 +373,12 @@
                 } catch (e) {
                     console.error("Speech Init Error", e);
                 }
+            }
+            if (!audioCtx) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    audioCtx.resume();
+                } catch (e) {}
             }
         }
         
@@ -212,7 +398,7 @@
                 }
                 
                 const u = new SpeechSynthesisUtterance(text.toString());
-                u.rate = 1.15; // slightly faster for rhythmic counting
+                u.rate = speechRate; // user-selected speech rate
                 
                 const preferred = getPreferredVoice();
                 if (preferred) u.voice = preferred;
@@ -255,11 +441,68 @@
                 const defaultSequences = [
                     {
                         id: 'seq-' + Date.now(),
-                        name: 'My Mobility Routine',
+                        name: 'Traps Mobility Routine',
                         routines: [
-                            { name: 'Neck Rotations', start: 1, end: 10, interval: 2.0, sets: 1, rest: 0 },
-                            { name: 'Shoulder Rolls', start: 1, end: 15, interval: 1.5, sets: 1, rest: 0 },
-                            { name: 'Hip Openers', start: 1, end: 10, interval: 3.0, sets: 2, rest: 5 }
+                            {
+                                "name": "Chin Tucks",
+                                "start": 1,
+                                "end": 10,
+                                "interval": 2,
+                                "sets": 2,
+                                "setMode": "Number",
+                                "rest": 5,
+                                "countType": "Normal"
+                            },
+                            {
+                                "name": "Ear-to-Shoulder Stretch",
+                                "start": 30,
+                                "end": 1,
+                                "interval": 1,
+                                "sets": 2,
+                                "setMode": "L/R",
+                                "rest": 5,
+                                "countType": "Normal"
+                            },
+                            {
+                                "name": "Diagonal Neck Stretch",
+                                "start": 30,
+                                "end": 1,
+                                "interval": 1,
+                                "sets": 2,
+                                "setMode": "L/R",
+                                "rest": 5,
+                                "countType": "Normal"
+                            },
+                            {
+                                "name": "Shoulder Shrugs & Rolls",
+                                "start": 1,
+                                "end": 15,
+                                "interval": 1,
+                                "sets": 2,
+                                "setMode": "F/B",
+                                "rest": 10,
+                                "countType": "And"
+                            },
+                            {
+                                "name": "Cat-Cow Stretch",
+                                "start": 1,
+                                "end": 10,
+                                "interval": 3,
+                                "sets": 2,
+                                "setMode": "Number",
+                                "rest": 10,
+                                "countType": "And"
+                            },
+                            {
+                                "name": "Wall Angels",
+                                "start": 1,
+                                "end": 12,
+                                "interval": 1.2,
+                                "sets": 2,
+                                "setMode": "Number",
+                                "rest": 10,
+                                "countType": "4s"
+                            }
                         ]
                     }
                 ];
@@ -333,8 +576,7 @@
 
             setMode(mode) {
                 if (mode === 'EDIT' && this.isRunning) {
-                    alert('Please stop the session before editing.');
-                    return;
+                    this.stop();
                 }
                 this.mode = mode;
                 renderUI();
@@ -560,6 +802,7 @@
                 const type = routine.countType || 'Normal';
                 let textToSpeak = this.currentCount;
                 let displayString = this.currentCount;
+                let useChime = false;
                 
                 if (type === 'And') {
                     if (this.subCount === 1) { textToSpeak = 'and'; displayString = `${this.currentCount} &`; }
@@ -568,10 +811,18 @@
                     else if (this.subCount === 2) textToSpeak = '3';
                     else if (this.subCount === 3) textToSpeak = '4';
                     displayString = `${this.currentCount}.${this.subCount + 1}`;
+                } else if (type === 'Chime') {
+                    useChime = true;
                 }
                 
                 this.displayCount = displayString;
-                speakAndForget(textToSpeak);
+                
+                if (useChime) {
+                    playChime();
+                } else {
+                    speakAndForget(textToSpeak);
+                }
+                
                 renderUI(); 
                 
                 if (type === 'Normal') {
@@ -779,6 +1030,79 @@
             renderUI();
         }
 
+        // Settings logic
+        function openSettingsModal() {
+            toggleSidebar(); // close sidebar array
+            document.getElementById('settings-modal-backdrop').classList.remove('hidden');
+            document.getElementById('settings-modal-backdrop').classList.add('flex');
+            
+            // Sync UI state
+            const theme = localStorage.getItem('voiceCounterTheme') || 'dark';
+            const btnText = document.getElementById('theme-toggle-text');
+            const btnIcon = document.getElementById('theme-icon');
+            if (theme === 'light') {
+                btnText.textContent = 'Light';
+                btnIcon.setAttribute('d', 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z');
+            } else {
+                btnText.textContent = 'Dark';
+                btnIcon.setAttribute('d', 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z');
+            }
+
+            const fontSize = localStorage.getItem('voiceCounterFontSize') || 'md';
+            updateFontButtons(fontSize);
+            
+            populateVoiceList();
+            document.getElementById('rate-slider').value = speechRate;
+            document.getElementById('rate-display').innerText = speechRate.toFixed(2) + 'x';
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal-backdrop').classList.add('hidden');
+            document.getElementById('settings-modal-backdrop').classList.remove('flex');
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isLight = html.classList.toggle('light');
+            html.classList.toggle('dark', !isLight);
+            
+            const btnText = document.getElementById('theme-toggle-text');
+            const btnIcon = document.getElementById('theme-icon');
+            
+            if (isLight) {
+                localStorage.setItem('voiceCounterTheme', 'light');
+                btnText.textContent = 'Light';
+                btnIcon.setAttribute('d', 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z');
+            } else {
+                localStorage.setItem('voiceCounterTheme', 'dark');
+                btnText.textContent = 'Dark';
+                btnIcon.setAttribute('d', 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z');
+            }
+        }
+
+        function setFontSize(size) {
+            const html = document.documentElement;
+            html.classList.remove('font-sm', 'font-md', 'font-lg');
+            html.classList.add(`font-${size}`);
+            localStorage.setItem('voiceCounterFontSize', size);
+            updateFontButtons(size);
+        }
+
+        function updateFontButtons(size) {
+            ['sm', 'md', 'lg'].forEach(s => {
+                const btn = document.getElementById(`font-btn-${s}`);
+                if (btn) {
+                    if (s === size) {
+                        btn.classList.add('bg-white/10', 'text-white', 'shadow-sm');
+                        btn.classList.remove('text-gray-400');
+                    } else {
+                        btn.classList.remove('bg-white/10', 'text-white', 'shadow-sm');
+                        btn.classList.add('text-gray-400');
+                    }
+                }
+            });
+        }
+
         // Sidebar Toggle
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -953,6 +1277,7 @@
                                                 <option class="bg-gray-900 text-white" value="Normal" ${(!r.countType || r.countType === 'Normal') ? 'selected' : ''}>Normal</option>
                                                 <option class="bg-gray-900 text-white" value="And" ${r.countType === 'And' ? 'selected' : ''}>"And"</option>
                                                 <option class="bg-gray-900 text-white" value="4s" ${r.countType === '4s' ? 'selected' : ''}>4-Beat</option>
+                                                <option class="bg-gray-900 text-white" value="Chime" ${r.countType === 'Chime' ? 'selected' : ''}>Chime</option>
                                             </select>
                                         </div>
                                     </div>
@@ -979,9 +1304,9 @@
                                 
                         if (isSelected) {
                             if (engine.isResting) {
-                                statusText = `<span class="text-yellow-400 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">R ${engine.restCount}...</span>`;
+                                statusText = `<span class="text-yellow-400 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">R ${engine.restCount}</span>`;
                             } else if (isCounting) {
-                                statusText = `<span class="text-blue-400 font-bold text-sm bg-blue-500/10 px-2 py-1 rounded-lg">${setPrefix}${engine.displayCount}...</span>`;
+                                statusText = `<span class="text-blue-400 font-bold text-sm bg-blue-500/10 px-2 py-1 rounded-lg">${setPrefix}${engine.displayCount}</span>`;
                             } else if (engine.isPaused) {
                                 statusText = `<span class="text-yellow-500 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">Paused</span>`;
                             } else {
@@ -1049,9 +1374,9 @@
                                 
                         if (isSelected) {
                             if (engine.isResting) {
-                                statusText = `<span class="text-yellow-400 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">R ${engine.restCount}...</span>`;
+                                statusText = `<span class="text-yellow-400 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">R ${engine.restCount}</span>`;
                             } else if (isCounting) {
-                                statusText = `<span class="text-blue-400 font-bold text-sm bg-blue-500/10 px-2 py-1 rounded-lg">${setPrefix}${engine.displayCount}...</span>`;
+                                statusText = `<span class="text-blue-400 font-bold text-sm bg-blue-500/10 px-2 py-1 rounded-lg">${setPrefix}${engine.displayCount}</span>`;
                             } else if (engine.isPaused) {
                                 statusText = `<span class="text-yellow-500 font-bold text-sm bg-yellow-500/10 px-2 py-1 rounded-lg">Paused</span>`;
                             } else {
@@ -1137,6 +1462,20 @@
             }
             deferredPrompt = null;
         }
+
+        // Initialize App State Settings
+        (function initSettings() {
+            const theme = localStorage.getItem('voiceCounterTheme');
+            if (theme === 'light') {
+                document.documentElement.classList.add('light');
+                document.documentElement.classList.remove('dark');
+            }
+            const fontSize = localStorage.getItem('voiceCounterFontSize');
+            if (fontSize) {
+                document.documentElement.classList.remove('font-sm', 'font-md', 'font-lg');
+                document.documentElement.classList.add(`font-${fontSize}`);
+            }
+        })();
 
         // Initialize UI
         renderUI();
